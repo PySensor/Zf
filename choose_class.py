@@ -5,13 +5,12 @@ import re
 import http.client
 from bs4 import BeautifulSoup
 import time
-# from PIL import Image
+from PIL import Image
 
 s = requests.session()
 
 
 def Get_Location(ip_address):
-    # ip_address = input('input the ip address of system: ')
     login_url = "http://" + ip_address + "/default2.aspx"
     response = http.client.HTTPConnection(ip_address)
     response.request("GET", '/default2.aspx', None)
@@ -36,9 +35,10 @@ def login(id, pwd, ip_address, location):
                               "Chrome/48.0.2564.82 Safari/537.36"}
     login = s.post(login_url, headers=headers)
     Login_Page = login.text
+    print('正在读取验证码...请稍后')
     checkcode_img = request.urlretrieve(code_url, 'cc.jpg')
-    # cc_image = Image.open('cc.jpg')
-    # cc_image.show()
+    cc_image = Image.open('cc.jpg')
+    cc_image.show()
     checkcode = input('请输入验证码->')
     print('loading....')
     params = {
@@ -107,6 +107,7 @@ def choose_class(ip, id, name, location):
             'ddl_xqbs':	'1',
             'ddl_sksj': '',
             'TextBox1': '',
+            'Button2': '确定',
             'kcmcGrid:_ctl2:jcnr': '|||',
             'kcmcGrid:_ctl3:jcnr': '|||',
             'kcmcGrid:_ctl4:jcnr': '|||',
@@ -173,29 +174,36 @@ def choose_class(ip, id, name, location):
     except Exception as e:
         print('你肯定是输错了点什么，重来吧')
     already_choose = soup.find_all('table')[1]
-    class1 = already_choose.find_all('tr')[1]
+    class1 = already_choose.find_all('tr')[1:]
     reg = re.compile('(\w.+){', re.S)
     classList = []
-    classList.append(class1.getText())
-    for i in classList:
-        already_class = re.findall(reg, i)
-
-    if len(already_class) != 0:
+    save_class = []
+    for i in class1:
+        item = i.getText()
+        classList.append(item)
+    for i1 in classList:
+        already_class = re.findall(reg, i1)[0]
+        save_class.append(already_class)
+    if len(save_class) > 1:
         print('-'*75)
         print('然而你已经选到课了别来凑热闹')
-        print('你选到的是：', already_class[0])
+        print('你选到的是：', save_class[0])
         input('输入任意键退出')
         quit()
     else:
         post_page = s.post(class_url, headers=table_headers, data=xk_data).text
         check_soup = BeautifulSoup(post_page, 'html5lib')
         check = check_soup.find_all('table')[1]
-        class2 = check.find_all('tr')[1]
+        class2 = check.find_all('tr')[1:]
         classList2 = []
-        classList2.append(class2.getText())
-        for i1 in classList2:
-            checked = re.findall(reg, i1)
-        if len(checked) != 0:
+        checked = []
+        for j in class2:
+            item2 = j.getText()
+            classList2.append(item2)
+        for j1 in classList2:
+            check_item = re.findall(reg, j1)[0]
+            checked.append(check_item)
+        if len(checked) > 1:
             print('恭喜你你选到课了')
             print('你选到的是：', checked[0])
             input('输入任意键退出')
@@ -206,7 +214,7 @@ def choose_class(ip, id, name, location):
 def main():
     print('''
 ------------------------------------------------------------
-  Py的辣鸡选课脚本测试版 --version 0.0.2
+  Py的辣鸡选课脚本测试版 --version 0.0.3
 ------------------------------------------------------------
 请选择你要登录的教务系统ip：
   0.http://172.16.17.113(内网)
@@ -217,20 +225,36 @@ def main():
 ------------------------------------------------------------''')
     ip_list = ['172.16.17.113', '172.16.17.110', '172.16.17.114', '119.145.67.59:8889', '119.145.67.59']
     ip_choose = int(input('输入选课的教务系统的ip的编号->'))
-    ip = ip_list[ip_choose]
-    location = Get_Location(ip)
+    try:
+        ip = ip_list[ip_choose]
+    except IndexError as e3:
+        print('输入的编号有误')
+        input('回车退出程序')
+        exit()
+    try:
+        location = Get_Location(ip)
+    except IndexError as e2:
+        print('没错辣鸡服务器真的炸了....炸了....了....')
+        input('回车退出程序')
+        exit()
     id = input("请输入学号->")
     pwd = input("请输入密码->")
     print('loading.....')
-    html = login(id=id, pwd=pwd, ip_address=ip, location=location)
-    try:
-        name = catch_name(html)
-        print('''登录成功!!!
+    while True:
+        html = login(id=id, pwd=pwd, ip_address=ip, location=location)
+        try:
+            name = catch_name(html)
+            print('''登录成功!!!
         雷猴,{}同学'''.format(name))
-        while True:
-            choose_class(ip=ip, id=id, name=name, location=location)
-    except AttributeError as e:
-        print('查询失败，原因可能是教务系统挂了或者是选课接口没有打开')
+            while True:
+                choose_class(ip=ip, id=id, name=name, location=location)
+        except IndexError as e1:
+            print('登录失败，原因可能是教务系统挂了或者验证码输入错误')
+            input("回车退出程序")
+        except AttributeError as e:
+            print('查询失败，原因可能是教务系统挂了或者是选课接口没有打开')
+            input("回车退出程序")
 
 if __name__ == '__main__':
-    main()
+    while True:
+        main()

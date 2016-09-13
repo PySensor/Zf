@@ -3,7 +3,7 @@ import requests
 from urllib import request, parse
 import re
 import http.client
-
+from bs4 import BeautifulSoup
 
 def getLocation():
     login_url = "http://119.145.67.59/default2.aspx"
@@ -61,18 +61,18 @@ def main():
         "Button1": "登录"
     }
     login_post = s.post(login_url, data=parms, headers=headers)
-    main_url = "http://119.145.67.59" + location + "xs_main.aspx?xh=" + ID  #catch indexerror
+    # main_url = "http://119.145.67.59" + location + "xs_main.aspx?xh=" + ID  #catch indexerror
     main_html = login_post.text
     name_re = r'<span id="xhxm">(.+?)同学<'
     name_res = re.compile(name_re, re.S)
     name = re.findall(name_res, main_html)[0]
-    a = {"xh": ID}
-    b = {"xm": name.encode('gb2312')}
-    c = {"gnmkdm": "N121605"}
-    e = parse.urlencode(a)
-    f = parse.urlencode(b)
-    g = parse.urlencode(c)
-    xscj_url = "http://119.145.67.59" + location + "xscj_gc.aspx?" + e + '&' + f + '&' + g
+    xh = {"xh": ID}
+    xm = {"xm": name.encode('gb2312')}
+    gnmkdm = {"gnmkdm": "N121605"}
+    xh = parse.urlencode(xh)
+    xm = parse.urlencode(xm)
+    gnmkdm = parse.urlencode(gnmkdm)
+    xscj_url = "http://119.145.67.59" + location + "xscj_gc.aspx?" + xh + '&' + xm + '&' + gnmkdm
     cj_headers = {
         "Host": "119.145.67.59",
         "Connection": "keep-alive",
@@ -108,9 +108,25 @@ def main():
         "Button2": "在校学习成绩查询"
     }
     cx_page = s.post(url=xscj_url, data=cxcj_data, headers=cxcj_headers)
-    cx_html = cx_page.text
-    return cx_html
+    cx_html = cx_page.content
+    soup = BeautifulSoup(cx_html, 'html5lib')
+    content = soup.find('span', {'class': 'formbox'})
+    tbody = content.find('tbody')
+    # for td in content.find_all('td'):
+    #     score = td.find('td').getText()
+    reg1 = re.compile("<[^>]*>")
+    contents = reg1.sub('\t\t', str(tbody))
+    # contents = tbody.findAll('td')
+    # contents_list = []
+    # for i in contents:
+        # reg1 = re.compile("<[^>]*>")
+        # r = reg1.sub('', str(i))
+        # reg1 = re.compile("<td>(.*?)</td>", re.S)
+        # r = re.findall(reg1, str(i))
+        # for r1 in r:
+        #     contents_list.append(r1)
 
+    return contents
 
 
 print(main())
