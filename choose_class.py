@@ -6,11 +6,12 @@ import http.client
 from bs4 import BeautifulSoup
 import time
 from PIL import Image
+import os
 
 s = requests.session()
 
 
-def Get_Location(ip_address):
+def get_location(ip_address):
     login_url = "http://" + ip_address + "/default2.aspx"
     response = http.client.HTTPConnection(ip_address)
     response.request("GET", '/default2.aspx', None)
@@ -21,14 +22,21 @@ def Get_Location(ip_address):
     return location[0]
 
 
-def Get_Viewstate(Login_Page):
+def get_viewstate(Login_Page):
     viewstate_reg = r'name="__VIEWSTATE" value="(.+?)"'
     viewstate_reg = re.compile(viewstate_reg, re.S)
     viewstate = re.findall(viewstate_reg, Login_Page)[0]
     return viewstate
 
 
-def login(id, pwd, ip_address, location):
+def catch_name(main_html):
+    name_reg = r'<span id="xhxm">(.+?)同学<'
+    name_reg = re.compile(name_reg, re.S)
+    name = re.findall(name_reg, main_html)[0]
+    return name
+
+
+def login(xh, pwd, ip_address, location):
     login_url = "http://" + ip_address + location + 'default2.aspx'
     code_url = "http://" + ip_address + location + 'CheckCode.aspx'
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -42,8 +50,8 @@ def login(id, pwd, ip_address, location):
     checkcode = input('请输入验证码->')
     print('loading....')
     params = {
-        "__VIEWSTATE": Get_Viewstate(Login_Page),
-        "txtUserName": id,
+        "__VIEWSTATE": get_viewstate(Login_Page),
+        "txtUserName": xh,
         "TextBox2": pwd,
         "txtSecretCode": checkcode,
         "RadioButtonList1": "学生",
@@ -51,18 +59,13 @@ def login(id, pwd, ip_address, location):
     }
     login_post = s.post(login_url, data=params, headers=headers)
     main_html = login_post.text
-    return main_html
-
-
-def catch_name(main_html):
-    name_reg = r'<span id="xhxm">(.+?)同学<'
-    name_reg = re.compile(name_reg, re.S)
-    name = re.findall(name_reg, main_html)[0]
+    name = catch_name(main_html)
+    print('登录成功，你好{}同学'.format(name))
     return name
 
 
-def choose_class(ip, id, name, location):
-    xh = {'xh': id}
+def choose_class(ip, xh, name, location):
+    xh = {'xh': xh}
     xm = {'xm': name.encode('gb2312')}
     gnmkdm = {'gnmkdm': 'N121203'}
     xh = parse.urlencode(xh)
@@ -100,7 +103,7 @@ def choose_class(ip, id, name, location):
     data = {
             '__EVENTTARGET': 'dpkcmcGrid:txtPageSize',
             '__EVENTARGUMENT': '',
-            '__VIEWSTATE': Get_Viewstate(class_page),
+            '__VIEWSTATE': get_viewstate(class_page),
             'ddl_kcxz': '',
             'ddl_ywyl':	'有',
             'ddl_kcgs': '',
@@ -141,11 +144,12 @@ def choose_class(ip, id, name, location):
     num_list2 = num_list[2::3]  #不选的课程
     class_table = table.find_all('tr')
     class_list = []
-    reg = re.compile('(\w.+){', re.S)
-    for i in class_table:
-        result = re.findall(reg, i.getText())
-        if len(result) != 0:
-            class_list.append(result[0])
+    reg = re.compile('(\w.+)周', re.S)
+    title_reg = re.compile('title="(.+?)"', re.S)
+    for i in class_table[1:]:
+        class_item = re.findall(reg, i.getText())[0]
+        class_time = re.findall(title_reg, str(i))[0]
+        class_list.append(class_item + class_time)
     print('下面就是你还能选择的课：')
     for n, c in enumerate(class_list):
         print('编号：{}-> 课程：{}'.format(n+1, c))
@@ -153,7 +157,7 @@ def choose_class(ip, id, name, location):
     xk_data = {
         '__EVENTTARGET': '',
         '__EVENTARGUMENT': '',
-        '__VIEWSTATE': Get_Viewstate(class_page),
+        '__VIEWSTATE': get_viewstate(class_page),
         'ddl_kcxz': '',
         'ddl_ywyl':	'有',
         'ddl_kcgs':	'',
@@ -232,22 +236,28 @@ def main():
         input('回车退出程序')
         exit()
     try:
-        location = Get_Location(ip)
+        location = get_location(ip)
     except IndexError as e2:
         print('没错辣鸡服务器真的炸了....炸了....了....')
         input('回车退出程序')
         exit()
-    id = input("请输入学号->")
-    pwd = input("请输入密码->")
-    print('loading.....')
+    xh = input('xh-> ')
+    if not os.path.exists(os.getcwd() + '\{}.txt'.format(xh)):
+        pwd = input('pwd-> ')
+        with open('{}.txt'.format(xh), 'w+', encoding='utf-8') as f1:
+            f1.writelines(pwd)
+        f1.close()
+        pwd = pwd
+    else:
+        xh = xh
+        print('正在从本地读取密码...')
+        with open('{}.txt'.format(xh), 'r') as f:
+            pwd = f.readlines()[0]
+        f.close()
     while True:
-        html = login(id=id, pwd=pwd, ip_address=ip, location=location)
         try:
-            name = catch_name(html)
-            print('''登录成功!!!
-        雷猴,{}同学'''.format(name))
-            while True:
-                choose_class(ip=ip, id=id, name=name, location=location)
+            name = login(xh=xh, pwd=pwd, ip_address=ip, location=location)
+            choose_class(ip=ip, xh=xh, name=name, location=location)
         except IndexError as e1:
             print('登录失败，原因可能是教务系统挂了或者验证码输入错误')
             input("回车退出程序")
