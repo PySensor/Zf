@@ -1,14 +1,20 @@
-# Zf
-正方教务系统模拟登陆，登录部分用requesets实现，demo，改进中
-demo和rewrite只是个大概的登录流程，变量名的命名有点随意
+# 正方教务系统爬虫
+python版本：python3.5
+
+正方教务系统模拟登陆，用python完成，登录部分用urllib和requesets实现，demo，改进中
+
+脚本只是个大概的登录流程，变量名的命名有点随意
 另外做了选课、查课表和查成绩的功能，没有分写进去，看看还有什么功能可以实现再整合成一个完整的脚本
 
-@check_ClassTable
-查课表
-@check_score
-查成绩
-@choose_class
-选课
+	@check_ClassTable
+	查课表
+	@check_score
+	查成绩
+	@choose_class
+	选课
+	@integration
+	暂时整合
 
 由于正方的教务系统很多学校都是通用，所以源码的标签和登录流程应该都是差不多的
+
 个人水平能力有限，写的可能比较乱，注释会慢慢加上去
